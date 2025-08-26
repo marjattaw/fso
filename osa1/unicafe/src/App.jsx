@@ -5,9 +5,12 @@ const Button = ({ onClick, text }) => (
   <button onClick={onClick}>{text}</button>
 )
 
-// Yksi tilastorivi
+// Yksi tilastorivi TAULUKKOON
 const StatisticLine = ({ text, value }) => (
-  <p>{text} {value}</p>
+  <tr>
+    <td>{text}</td>
+    <td>{value}</td>
+  </tr>
 )
 
 const Statistics = ({ good, neutral, bad }) => {
@@ -26,13 +29,17 @@ const Statistics = ({ good, neutral, bad }) => {
 
   return (
     <div>
-      <h2>Statistiikka</h2>
-      <StatisticLine text="Hyvä" value={good} />
-      <StatisticLine text="Neutraali" value={neutral} />
-      <StatisticLine text="Huono" value={bad} />
-      <StatisticLine text="Kaikki" value={all} />
-      <StatisticLine text="Keskiarvo" value={average.toFixed(1)} />
-      <StatisticLine text="Positiivisia" value={`${positive.toFixed(1)} %`} />
+      <h2>statistiikka</h2>
+      <table>
+        <tbody>
+          <StatisticLine text="Hyvä" value={good} />
+          <StatisticLine text="Neutraali" value={neutral} />
+          <StatisticLine text="Huono" value={bad} />
+          <StatisticLine text="Kaikki" value={all} />
+          <StatisticLine text="Keskiarvo" value={average.toFixed(1)} />
+          <StatisticLine text="Positiivisia" value={`${positive.toFixed(1)} %`} />
+        </tbody>
+      </table>
     </div>
   )
 }

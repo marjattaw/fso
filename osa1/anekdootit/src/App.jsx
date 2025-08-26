@@ -13,17 +13,28 @@ const App = () => {
   ]
 
   const [selected, setSelected] = useState(0)
+  // äänet: taulukko, alussa nollia
+  const [votes, setVotes] = useState(Array(anecdotes.length).fill(0))
 
   const nextRandom = () => {
     const idx = Math.floor(Math.random() * anecdotes.length)
     setSelected(idx)
   }
 
+  const voteCurrent = () => {
+    // Kopioi taulukko ennen muutosta
+    const copy = [...votes]
+    copy[selected] += 1
+    setVotes(copy)
+  }
+
   return (
     <div>
       <h1>Anecdote of the day</h1>
       <p>{anecdotes[selected]}</p>
+      <p>has {votes[selected]} Votes</p>
 
+      <button onClick={voteCurrent}>Vote</button>
       <button onClick={nextRandom}>Next anecdote</button>
     </div>
   )

@@ -1,5 +1,15 @@
 import { useState } from 'react'
 
+// Yksi nappi
+const Button = ({ onClick, text }) => (
+  <button onClick={onClick}>{text}</button>
+)
+
+// Yksi tilastorivi
+const StatisticLine = ({ text, value }) => (
+  <p>{text} {value}</p>
+)
+
 const Statistics = ({ good, neutral, bad }) => {
   const all = good + neutral + bad
   if (all === 0) {
@@ -17,12 +27,12 @@ const Statistics = ({ good, neutral, bad }) => {
   return (
     <div>
       <h2>Statistiikka</h2>
-      <p>Hyvä {good}</p>
-      <p>Neutraali {neutral}</p>
-      <p>Huono {bad}</p>
-      <p>Kaikki {all}</p>
-      <p>Keskiarvo {average.toFixed(1)}</p>
-      <p>Positiivisia {positive.toFixed(1)} %</p>
+      <StatisticLine text="Hyvä" value={good} />
+      <StatisticLine text="Neutraali" value={neutral} />
+      <StatisticLine text="Huono" value={bad} />
+      <StatisticLine text="Kaikki" value={all} />
+      <StatisticLine text="Keskiarvo" value={average.toFixed(1)} />
+      <StatisticLine text="Positiivisia" value={`${positive.toFixed(1)} %`} />
     </div>
   )
 }
@@ -34,10 +44,10 @@ const App = () => {
 
   return (
     <div>
-      <h1>anna palautetta</h1>
-      <button onClick={() => setGood(good + 1)}>Hyvä</button>
-      <button onClick={() => setNeutral(neutral + 1)}>Neutraali</button>
-      <button onClick={() => setBad(bad + 1)}>Huono</button>
+      <h1>Anna palautetta</h1>
+      <Button onClick={() => setGood(good + 1)} text="Hyvä" />
+      <Button onClick={() => setNeutral(neutral + 1)} text="Neutraali" />
+      <Button onClick={() => setBad(bad + 1)} text="Huono" />
 
       <Statistics good={good} neutral={neutral} bad={bad} />
     </div>

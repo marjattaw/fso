@@ -15,7 +15,7 @@ export default function App() {
     personsService.getAll().then(data => setPersons(data))
   }, [])
 
-  // 2.12 + 2.15: lisää tai päivitä
+  // 2.12 + 2.15*: lisää uusi tai päivitä olemassa olevan numero
   const addPerson = (e) => {
     e.preventDefault()
     const name = newName.trim()
@@ -31,7 +31,7 @@ export default function App() {
         personsService
           .update(existing.id, { ...existing, number })
           .then(returned => {
-            setPersons(prev => prev.map(p => p.id !== existing.id ? p : returned))
+            setPersons(prev => prev.map(p => (p.id !== existing.id ? p : returned)))
             setNewName('')
             setNewNumber('')
           })
@@ -43,7 +43,7 @@ export default function App() {
       return
     }
 
-    // uusi henkilö (POST)
+    // 2.12: uusi henkilö (POST)
     personsService
       .create({ name, number })
       .then(returned => {
@@ -56,7 +56,7 @@ export default function App() {
       })
   }
 
-  // 2.14: poisto 
+  // 2.14: poisto (DELETE)
   const handleDelete = (id, name) => {
     if (!window.confirm(`Delete ${name}?`)) return
     personsService
@@ -65,7 +65,6 @@ export default function App() {
         setPersons(prev => prev.filter(p => p.id !== id))
       })
       .catch(() => {
-        // jos oli jo poistettu:
         alert(`${name} was already removed from server`)
         setPersons(prev => prev.filter(p => p.id !== id))
       })

@@ -1,5 +1,11 @@
 import { useState } from 'react'
 
+const Filter = ({ filter, onChange }) => (
+  <div>
+    filter shown with <input value={filter} onChange={onChange} />
+  </div>
+)
+
 const Persons = ({ persons }) => (
   <ul>
     {persons.map(p => <li key={p.name}>{p.name} {p.number}</li>)}
@@ -22,6 +28,7 @@ export default function App() {
   ])
   const [newName, setNewName] = useState('')
   const [newNumber, setNewNumber] = useState('')
+  const [filter, setFilter] = useState('')
 
   const addPerson = (e) => {
     e.preventDefault()
@@ -40,9 +47,15 @@ export default function App() {
     setNewNumber('')
   }
 
+  const personsToShow = persons.filter(p =>
+    p.name.toLowerCase().includes(filter.trim().toLowerCase())
+  )
+
   return (
     <div>
       <h2>Phonebook</h2>
+
+      <Filter filter={filter} onChange={e => setFilter(e.target.value)} />
 
       <PersonForm
         onSubmit={addPerson}
@@ -53,7 +66,7 @@ export default function App() {
       />
 
       <h3>Numbers</h3>
-      <Persons persons={persons} />
+      <Persons persons={personsToShow} />
     </div>
   )
 }

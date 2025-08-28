@@ -25,6 +25,14 @@ export default function App() {
     e.preventDefault()
     const name = newName.trim()
     if (!name) return
+
+    // 2.7: estä duplikaatit
+    const exists = persons.some(p => p.name.toLowerCase() === name.toLowerCase())
+    if (exists) {
+      alert(`${name} is already added to phonebook`)
+      return
+    }
+
     setPersons(persons.concat({ name }))
     setNewName('')
   }
@@ -32,7 +40,13 @@ export default function App() {
   return (
     <div>
       <h2>Phonebook</h2>
-      <PersonForm onSubmit={addPerson} newName={newName} onNameChange={e => setNewName(e.target.value)} />
+
+      <PersonForm
+        onSubmit={addPerson}
+        newName={newName}
+        onNameChange={e => setNewName(e.target.value)}
+      />
+
       <h3>Numbers</h3>
       <Persons persons={persons} />
     </div>

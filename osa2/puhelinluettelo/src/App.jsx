@@ -3,12 +3,19 @@ import personsService from './services/persons'
 import Filter from './components/Filter'
 import PersonForm from './components/PersonForm'
 import Persons from './components/Persons'
+import Notification from './components/Notification'   // <-- UUSI
 
 export default function App() {
   const [persons, setPersons] = useState([])
   const [newName, setNewName] = useState('')
   const [newNumber, setNewNumber] = useState('')
   const [filter, setFilter] = useState('')
+  const [message, setMessage] = useState(null)         // <-- UUSI
+
+  const notify = (text, type = 'success') => {         // <-- UUSI
+    setMessage({ text, type })
+    setTimeout(() => setMessage(null), 4000)
+  }
 
   // 2.11: hae alkudata palvelimelta
   useEffect(() => {
@@ -34,9 +41,10 @@ export default function App() {
             setPersons(prev => prev.map(p => (p.id !== existing.id ? p : returned)))
             setNewName('')
             setNewNumber('')
+            notify(`Updated ${returned.name}`)              // <-- UUSI
           })
           .catch(() => {
-            alert(`Information of ${existing.name} has already been removed from server`)
+            notify(`Information of ${existing.name} has already been removed from server`, 'error') // <-- UUSI
             setPersons(prev => prev.filter(p => p.id !== existing.id))
           })
       }
@@ -50,9 +58,10 @@ export default function App() {
         setPersons(prev => prev.concat(returned))
         setNewName('')
         setNewNumber('')
+        notify(`Added ${returned.name}`)                   // <-- UUSI
       })
       .catch(() => {
-        alert('Failed to create person')
+        notify('Failed to create person', 'error')         // <-- UUSI
       })
   }
 
@@ -63,9 +72,10 @@ export default function App() {
       .remove(id)
       .then(() => {
         setPersons(prev => prev.filter(p => p.id !== id))
+        notify(`Deleted ${name}`)                          // <-- UUSI
       })
       .catch(() => {
-        alert(`${name} was already removed from server`)
+        notify(`${name} was already removed from server`, 'error') // <-- UUSI
         setPersons(prev => prev.filter(p => p.id !== id))
       })
   }
@@ -77,6 +87,8 @@ export default function App() {
   return (
     <div>
       <h2>Phonebook</h2>
+
+      <Notification message={message} /> {/* <-- UUSI */}
 
       <Filter value={filter} onChange={e => setFilter(e.target.value)} />
 

@@ -1,3 +1,4 @@
+// Tehtävät tehty 2.5 asti
 import Course from "./components/Course"
 
 const App = () => {

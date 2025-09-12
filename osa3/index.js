@@ -35,6 +35,17 @@ app.get('/api/persons/:id', (req, res) => {
   }
 })
 
+// 3.4: poista henkilötieto id:llä
+app.delete('/api/persons/:id', (req, res) => {
+  const id = req.params.id
+  const idx = persons.findIndex(p => p.id === id)
+  if (idx !== -1) {
+    persons.splice(idx, 1)   // poista 1 alkio kohdasta idx
+  }
+  // Kurssin ohjeiden mukaan 204 riittää, vaikka id:tä ei löytyisi
+  res.status(204).end()
+})
+
 const PORT = 3001
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)

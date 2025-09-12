@@ -59,18 +59,32 @@ function generateId() {
   return id
 }
 
+// 3.6: validoinnit (nimi & numero pakollisia, nimi uniikki)
 app.post('/api/persons', (req, res) => {
   const body = req.body   // odotetaan JSONia: { name, number }
 
-  // 3.5: tässä vaiheessa ei vielä tehdä validointeja (tulee 3.6:ssa)
+  if (!body?.name) {
+    return res.status(400).json({ error: 'name missing' })
+  }
+  if (!body?.number) {
+    return res.status(400).json({ error: 'number missing' })
+  }
+
+  const newName = String(body.name).trim().toLowerCase()
+  const alreadyExists = persons.some(
+    p => p.name.trim().toLowerCase() === newName
+  )
+  if (alreadyExists) {
+    return res.status(400).json({ error: 'name must be unique' })
+  }
+
   const newPerson = {
     id: generateId(),
-    name: body.name,
-    number: body.number,
+    name: String(body.name).trim(),
+    number: String(body.number).trim(),
   }
 
   persons.push(newPerson)
-  // 201 Created on hyvä käytäntö, 200 käy myös
   res.status(201).json(newPerson)
 })
 

@@ -1,8 +1,12 @@
 const express = require('express')
+const morgan = require('morgan')     // <-- uusi
 const app = express()
 
 // jotta request.body toimii JSONille
 app.use(express.json())
+
+// 3.7: lokitus tiny-formaatilla
+app.use(morgan('tiny'))
 
 const persons = [
   { id: "1", name: "Arto Hellas", number: "040-123456" },
@@ -61,7 +65,7 @@ function generateId() {
 
 // 3.6: validoinnit (nimi & numero pakollisia, nimi uniikki)
 app.post('/api/persons', (req, res) => {
-  const body = req.body   // odotetaan JSONia: { name, number }
+  const body = req.body
 
   if (!body?.name) {
     return res.status(400).json({ error: 'name missing' })

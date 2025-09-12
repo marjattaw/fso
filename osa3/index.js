@@ -8,6 +8,17 @@ const persons = [
   { id: "4", name: "Mary Poppendieck", number: "39-23-6423122" }
 ]
 
+// 3.2: info-sivu (määrä + kellonaika)
+app.get('/info', (req, res) => {
+  const count = persons.length
+  const time = new Date()
+  res.send(
+    `<p>Phonebook has info for ${count} people</p>
+     <p>${time}</p>`
+  )
+})
+
+// 3.1: kaikki henkilöt
 app.get('/api/persons', (req, res) => {
   res.json(persons)
 })

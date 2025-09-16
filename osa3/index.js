@@ -1,11 +1,16 @@
 const express = require('express')
 const morgan = require('morgan')
-const cors = require('cors')              // <-- uusi
+const cors = require('cors')
+const path = require('path')                  // <-- UUSI
+
 const app = express()
 
 app.use(express.json())
 app.use(morgan('tiny'))
-app.use(cors())                           // <-- sallii pyynnöt eri originista
+app.use(cors()) // kehityksessä sallii eri originin (ei haittaa tuotannossakaan)
+
+// --- Palvele Viten tuotantobuild (dist/) ---
+app.use(express.static(path.join(__dirname, 'dist')))  // <-- UUSI
 
 let persons = [
   { id: "1", name: "Arto Hellas", number: "040-123456" },
@@ -57,5 +62,12 @@ app.post('/api/persons', (req, res) => {
   res.status(201).json(newPerson)
 })
 
-const PORT = 3001
-app.listen(PORT, () => { console.log(`Server running on port ${PORT}`) })
+// --- SPA catch-all: palauta index.html muille kuin /api-reiteille ---
+app.get('*', (req, res) => {                     // <-- UUSI
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'))
+})
+
+const PORT = process.env.PORT || 3001
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`)
+})

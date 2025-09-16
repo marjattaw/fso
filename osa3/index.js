@@ -62,8 +62,9 @@ app.post('/api/persons', (req, res) => {
   res.status(201).json(newPerson)
 })
 
-// --- SPA catch-all: palauta index.html muille kuin /api-reiteille ---
-app.get('*', (req, res) => {                     // <-- UUSI
+
+// Palauta index.html kaikille muille kuin /api -poluille
+app.get('/*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'))
 })
 

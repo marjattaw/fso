@@ -1,16 +1,22 @@
 const express = require('express')
 const morgan = require('morgan')
 const cors = require('cors')
-const path = require('path')                  // <-- UUSI
+const path = require('path')
+const fs = require('fs')
 
 const app = express()
 
 app.use(express.json())
 app.use(morgan('tiny'))
-app.use(cors()) // kehityksessä sallii eri originin (ei haittaa tuotannossakaan)
+app.use(cors())
 
-// --- Palvele Viten tuotantobuild (dist/) ---
-app.use(express.static(path.join(__dirname, 'dist')))  // <-- UUSI
+const distDir = path.join(__dirname, 'dist')
+if (fs.existsSync(distDir)) {
+  app.use(express.static(distDir))
+  app.get('/*', (req, res) => {
+    res.sendFile(path.join(distDir, 'index.html'))
+  })
+}
 
 let persons = [
   { id: "1", name: "Arto Hellas", number: "040-123456" },
@@ -27,7 +33,7 @@ app.get('/info', (req, res) => {
   )
 })
 
-app.get('/api/persons', (req, res) => { res.json(persons) })
+app.get('/api/persons', (req, res) => res.json(persons))
 
 app.get('/api/persons/:id', (req, res) => {
   const id = req.params.id
@@ -54,7 +60,9 @@ app.post('/api/persons', (req, res) => {
   const body = req.body
   if (!body?.name) return res.status(400).json({ error: 'name missing' })
   if (!body?.number) return res.status(400).json({ error: 'number missing' })
-  const exists = persons.some(p => p.name.trim().toLowerCase() === body.name.trim().toLowerCase())
+  const exists = persons.some(
+    p => p.name.trim().toLowerCase() === body.name.trim().toLowerCase()
+  )
   if (exists) return res.status(400).json({ error: 'name must be unique' })
 
   const newPerson = { id: generateId(), name: body.name.trim(), number: body.number.trim() }
@@ -62,13 +70,5 @@ app.post('/api/persons', (req, res) => {
   res.status(201).json(newPerson)
 })
 
-
-// Palauta index.html kaikille muille kuin /api -poluille
-app.get('/*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'))
-})
-
 const PORT = process.env.PORT || 3001
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
-})
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`))

@@ -10,9 +10,10 @@ app.use(express.json())
 app.use(morgan('tiny'))
 app.use(cors())
 
-// Palvele Vite-buildin staattiset tiedostot jos dist löytyy
+// --- palvele staattiset tiedostot jos dist on olemassa ---
 const distDir = path.join(__dirname, 'dist')
-if (fs.existsSync(distDir)) {
+const hasDist = fs.existsSync(distDir)
+if (hasDist) {
   app.use(express.static(distDir))
 }
 
@@ -75,12 +76,16 @@ app.post('/api/persons', (req, res) => {
 })
 // ---------- /API ----------
 
-// SPA catch-all: palautetaan index.html kaikille ei-API-pyynnöille
-if (fs.existsSync(distDir)) {
-  app.get('/(.*)', (req, res) => {
-    res.sendFile(path.join(distDir, 'index.html'))
+// ---------- SPA catch-all ilman polkumallia (Express 5 -yhteensopiva) ----------
+if (hasDist) {
+  app.use((req, res, next) => {
+    // älä koske API-polkuihin
+    if (req.path.startsWith('/api')) return next()
+    // muut (esim. /, /persons, /anything) -> index.html
+    return res.sendFile(path.join(distDir, 'index.html'))
   })
 }
+// -----------------------------------------------------------------------------
 
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`))

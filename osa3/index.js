@@ -10,12 +10,10 @@ app.use(express.json())
 app.use(morgan('tiny'))
 app.use(cors())
 
+// Palvele Vite-buildin staattiset tiedostot jos dist löytyy
 const distDir = path.join(__dirname, 'dist')
 if (fs.existsSync(distDir)) {
   app.use(express.static(distDir))
-  app.get('/*', (req, res) => {
-    res.sendFile(path.join(distDir, 'index.html'))
-  })
 }
 
 let persons = [
@@ -25,6 +23,7 @@ let persons = [
   { id: "4", name: "Mary Poppendieck", number: "39-23-6423122" }
 ]
 
+// ---------- API ----------
 app.get('/info', (req, res) => {
   const count = persons.length
   res.send(
@@ -49,7 +48,7 @@ app.delete('/api/persons/:id', (req, res) => {
   res.status(204).end()
 })
 
-function generateId() {
+function generateId () {
   let id
   do { id = String(Math.floor(100000000 + Math.random() * 900000000)) }
   while (persons.some(p => p.id === id))
@@ -58,17 +57,30 @@ function generateId() {
 
 app.post('/api/persons', (req, res) => {
   const body = req.body
-  if (!body?.name) return res.status(400).json({ error: 'name missing' })
+  if (!body?.name)   return res.status(400).json({ error: 'name missing' })
   if (!body?.number) return res.status(400).json({ error: 'number missing' })
+
   const exists = persons.some(
     p => p.name.trim().toLowerCase() === body.name.trim().toLowerCase()
   )
   if (exists) return res.status(400).json({ error: 'name must be unique' })
 
-  const newPerson = { id: generateId(), name: body.name.trim(), number: body.number.trim() }
+  const newPerson = {
+    id: generateId(),
+    name: body.name.trim(),
+    number: body.number.trim()
+  }
   persons.push(newPerson)
   res.status(201).json(newPerson)
 })
+// ---------- /API ----------
+
+// SPA catch-all: palautetaan index.html kaikille ei-API-pyynnöille
+if (fs.existsSync(distDir)) {
+  app.get('/(.*)', (req, res) => {
+    res.sendFile(path.join(distDir, 'index.html'))
+  })
+}
 
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`))

@@ -79,7 +79,7 @@ app.post('/api/persons', (req, res) => {
 // ---------- SPA catch-all ilman polkumallia (Express 5 -yhteensopiva) ----------
 if (hasDist) {
   app.use((req, res, next) => {
-    // älä koske API-polkuihin
+    // älä koske API-polkuihin !!
     if (req.path.startsWith('/api')) return next()
     // muut (esim. /, /persons, /anything) -> index.html
     return res.sendFile(path.join(distDir, 'index.html'))

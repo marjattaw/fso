@@ -1,14 +1,32 @@
-const express = require('express')
-const morgan = require('morgan')
-const cors = require('cors')
-const path = require('path')
-const fs = require('fs')
+require('dotenv').config()
+
+const express  = require('express')
+const morgan   = require('morgan')
+const cors     = require('cors')
+const path     = require('path')
+const fs       = require('fs')
+const mongoose = require('mongoose')
+const Person   = require('./models/person')
 
 const app = express()
 
 app.use(express.json())
 app.use(morgan('tiny'))
 app.use(cors())
+
+// --- tietokantayhteys ---
+const uri = process.env.MONGODB_URI
+if (!uri) {
+  console.error('MONGODB_URI missing. Put it in .env or Render env vars.')
+  process.exit(1)
+}
+mongoose
+  .connect(uri)
+  .then(() => console.log('MongoDB connected'))
+  .catch(err => {
+    console.error('MongoDB connection error:', err.message)
+    process.exit(1)
+  })
 
 // --- palvele staattiset tiedostot jos dist on olemassa ---
 const distDir = path.join(__dirname, 'dist')
@@ -17,75 +35,73 @@ if (hasDist) {
   app.use(express.static(distDir))
 }
 
-let persons = [
-  { id: "1", name: "Arto Hellas", number: "040-123456" },
-  { id: "2", name: "Ada Lovelace", number: "39-44-5323523" },
-  { id: "3", name: "Dan Abramov", number: "12-43-234345" },
-  { id: "4", name: "Mary Poppendieck", number: "39-23-6423122" }
-]
-
 // ---------- API ----------
-app.get('/info', (req, res) => {
-  const count = persons.length
-  res.send(
-    `<p>Phonebook has info for ${count} people</p>
-     <p>${new Date()}</p>`
-  )
+
+// /info (määrä kannasta)
+app.get('/info', async (_req, res, next) => {
+  try {
+    const count = await Person.countDocuments({})
+    res.send(
+      `<p>Phonebook has info for ${count} people</p>
+       <p>${new Date()}</p>`
+    )
+  } catch (err) { next(err) }
 })
 
-app.get('/api/persons', (req, res) => res.json(persons))
-
-app.get('/api/persons/:id', (req, res) => {
-  const id = req.params.id
-  const person = persons.find(p => p.id === id)
-  if (person) res.json(person)
-  else res.status(404).end()
+// 3.13: kaikki kannasta
+app.get('/api/persons', async (_req, res, next) => {
+  try {
+    const persons = await Person.find({})
+    res.json(persons)
+  } catch (err) { next(err) }
 })
 
-app.delete('/api/persons/:id', (req, res) => {
-  const id = req.params.id
-  const idx = persons.findIndex(p => p.id === id)
-  if (idx !== -1) persons.splice(idx, 1)
-  res.status(204).end()
+// (hyödyllinen) yksittäinen id:llä
+app.get('/api/persons/:id', async (req, res, next) => {
+  try {
+    const person = await Person.findById(req.params.id)
+    if (person) res.json(person)
+    else res.status(404).end()
+  } catch (err) { next(err) }
 })
 
-function generateId () {
-  let id
-  do { id = String(Math.floor(100000000 + Math.random() * 900000000)) }
-  while (persons.some(p => p.id === id))
-  return id
-}
+// (hyödyllinen) poisto
+app.delete('/api/persons/:id', async (req, res, next) => {
+  try {
+    await Person.findByIdAndDelete(req.params.id)
+    res.status(204).end()
+  } catch (err) { next(err) }
+})
 
-app.post('/api/persons', (req, res) => {
-  const body = req.body
-  if (!body?.name)   return res.status(400).json({ error: 'name missing' })
-  if (!body?.number) return res.status(400).json({ error: 'number missing' })
+// 3.14: luo uusi kantaan
+app.post('/api/persons', async (req, res, next) => {
+  try {
+    const { name, number } = req.body
+    if (!name)   return res.status(400).json({ error: 'name missing' })
+    if (!number) return res.status(400).json({ error: 'number missing' })
 
-  const exists = persons.some(
-    p => p.name.trim().toLowerCase() === body.name.trim().toLowerCase()
-  )
-  if (exists) return res.status(400).json({ error: 'name must be unique' })
-
-  const newPerson = {
-    id: generateId(),
-    name: body.name.trim(),
-    number: body.number.trim()
-  }
-  persons.push(newPerson)
-  res.status(201).json(newPerson)
+    const person = new Person({ name: name.trim(), number: number.trim() })
+    const saved = await person.save()
+    res.status(201).json(saved)
+  } catch (err) { next(err) }
 })
 // ---------- /API ----------
 
-// ---------- SPA catch-all ilman polkumallia (Express 5 -yhteensopiva) ----------
+// SPA catch-all ilman polkumallia (Express 5 -yhteensopiva)
 if (hasDist) {
   app.use((req, res, next) => {
-    // älä koske API-polkuihin !!
     if (req.path.startsWith('/api')) return next()
-    // muut (esim. /, /persons, /anything) -> index.html
     return res.sendFile(path.join(distDir, 'index.html'))
   })
 }
-// -----------------------------------------------------------------------------
+
+// virheenkäsittely
+app.use((err, _req, res, _next) => {
+  console.error(err.name, err.message)
+  if (err.name === 'CastError')      return res.status(400).json({ error: 'malformatted id' })
+  if (err.name === 'ValidationError') return res.status(400).json({ error: err.message })
+  res.status(500).json({ error: 'internal server error' })
+})
 
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`))

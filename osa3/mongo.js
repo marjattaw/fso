@@ -5,7 +5,7 @@
 
 const mongoose = require('mongoose')
 
-// *** VAIHDA OMAT ARVOT ***
+// *** VAIHDA OMAT ARVOT ****
 const DB_USER = 'marsumarjatta'                 // DB user
 const DB_HOST = 'cluster0.u4gt7yr.mongodb.net'  // host
 const DB_NAME = 'phonebook'

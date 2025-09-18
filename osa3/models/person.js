@@ -3,8 +3,17 @@ const mongoose = require('mongoose')
 mongoose.set('strictQuery', true)
 
 const personSchema = new mongoose.Schema({
-  name: { type: String, required: true, trim: true },
-  number: { type: String, required: true, trim: true },
+  name: {
+    type: String,
+    required: [true, 'name missing'],
+    minLength: [3, 'name must be at least 3 characters'],
+    trim: true,
+  },
+  number: {
+    type: String,
+    required: [true, 'number missing'],
+    trim: true,
+  },
 })
 
 personSchema.set('toJSON', {

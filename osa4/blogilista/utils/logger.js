@@ -1,3 +1,4 @@
-const info  = (...args) => console.log(...args)
-const error = (...args) => console.error(...args)
+const info  = (...params) => console.log(...params)
+const error = (...params) => console.error(...params)
+
 module.exports = { info, error }

@@ -1,20 +1,17 @@
 // src/App.jsx
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import blogsService, { setToken as setBlogsToken } from './services/blogs'
 import loginService from './services/login'
 import Notification from './components/Notification'
+import Togglable from './components/Togglable'
+import BlogForm from './components/Blog'
+import Blog from './components/Blog' // HUOM: jos BlogForm on omassa tiedostossa, vaihda import oikein
 
 export default function App() {
   const [blogs, setBlogs] = useState([])
   const [user, setUser] = useState(null)
-
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-
-  const [title, setTitle]   = useState('')
-  const [author, setAuthor] = useState('')
-  const [url, setUrl]       = useState('')
-
   const [message, setMessage] = useState(null)
 
   const notify = (text, type = 'success') => {
@@ -22,12 +19,14 @@ export default function App() {
     setTimeout(() => setMessage(null), 4000)
   }
 
-  // Lataa blogit
+  const formRef = useRef()
+
   useEffect(() => {
-    blogsService.getAll().then(setBlogs)
+    blogsService.getAll().then(data => {
+      setBlogs([...data].sort((a, b) => (b.likes || 0) - (a.likes || 0)))
+    })
   }, [])
 
-  // Palauta kirjautuminen localStoragesta (5.2)
   useEffect(() => {
     const json = window.localStorage.getItem('loggedBloglistUser')
     if (json) {
@@ -37,12 +36,10 @@ export default function App() {
     }
   }, [])
 
-  // 5.1: kirjautuminen
   const handleLogin = async (e) => {
     e.preventDefault()
     try {
       const u = await loginService.login({ username, password })
-      // talteen selaimeen (5.2)
       window.localStorage.setItem('loggedBloglistUser', JSON.stringify(u))
       setBlogsToken(u.token)
       setUser(u)
@@ -55,7 +52,6 @@ export default function App() {
     }
   }
 
-  // 5.2: uloskirjautuminen
   const handleLogout = () => {
     window.localStorage.removeItem('loggedBloglistUser')
     setUser(null)
@@ -63,23 +59,53 @@ export default function App() {
     notify('Logged out')
   }
 
-  // 5.3: blogin lisäys (token headerissa)
-  const addBlog = async (e) => {
-    e.preventDefault()
+  // 5.6 + 5.5: uuden blogin luonti & lomakkeen sulkeminen
+  const createBlog = async ({ title, author, url }) => {
     try {
       const created = await blogsService.create({ title, author, url })
-      setBlogs((prev) => prev.concat(created))
-      setTitle('')
-      setAuthor('')
-      setUrl('')
+      setBlogs(prev => {
+        const next = prev.concat(created)
+        return next.sort((a, b) => (b.likes || 0) - (a.likes || 0))
+      })
       notify(`a new blog "${created.title}" by ${created.author} added`)
+      formRef.current?.toggleVisibility()
     } catch (err) {
       const apiMsg = err?.response?.data?.error
       notify(apiMsg || 'failed to add blog', 'error')
     }
   }
 
-  // Ei kirjautunut → näytä login-lomake
+  // 5.8 + 5.9: like – säilytä user-populate jos backend ei palauta sitä
+  const likeBlog = async (blog) => {
+    const payload = {
+      title: blog.title,
+      author: blog.author,
+      url: blog.url,
+      likes: (blog.likes || 0) + 1,
+      user: blog.user?.id || blog.user
+    }
+    const updated = await blogsService.update(blog.id, payload)
+    const fixed = { ...updated, user: blog.user }
+
+    setBlogs(prev => {
+      const next = prev.map(b => (b.id !== blog.id ? b : fixed))
+      return next.sort((a, b) => (b.likes || 0) - (a.likes || 0))
+    })
+  }
+
+  // 5.11: delete (vain lisääjä näkee Blog-komponentissa)
+  const deleteBlog = async (blog) => {
+    if (!window.confirm(`Remove blog "${blog.title}" by ${blog.author}?`)) return
+    try {
+      await blogsService.remove(blog.id)
+      setBlogs(prev => prev.filter(b => b.id !== blog.id))
+      notify(`deleted "${blog.title}"`)
+    } catch (err) {
+      const apiMsg = err?.response?.data?.error
+      notify(apiMsg || 'failed to delete blog', 'error')
+    }
+  }
+
   if (!user) {
     return (
       <div style={{ maxWidth: 560, margin: '2rem auto', fontFamily: 'system-ui, sans-serif' }}>
@@ -91,7 +117,7 @@ export default function App() {
               username
               <input
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={e => setUsername(e.target.value)}
                 autoComplete="username"
               />
             </label>
@@ -102,7 +128,7 @@ export default function App() {
               <input
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={e => setPassword(e.target.value)}
                 autoComplete="current-password"
               />
             </label>
@@ -113,64 +139,28 @@ export default function App() {
     )
   }
 
-  // Kirjautunut → listaa blogit ja tarjoa lisäyslomake
   return (
     <div style={{ maxWidth: 720, margin: '2rem auto', fontFamily: 'system-ui, sans-serif' }}>
       <h2>blogs</h2>
       <Notification message={message} />
-
       <p>
         {user.name} logged in{' '}
         <button onClick={handleLogout}>logout</button>
       </p>
 
-      <h3>Create new</h3>
-      <form onSubmit={addBlog} style={{ marginBottom: 18 }}>
-        <div>
-          <label>
-            title{' '}
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Blog title"
-            />
-          </label>
-        </div>
-        <div>
-          <label>
-            author{' '}
-            <input
-              value={author}
-              onChange={(e) => setAuthor(e.target.value)}
-              placeholder="Blog author"
-            />
-          </label>
-        </div>
-        <div>
-          <label>
-            url{' '}
-            <input
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://example.com"
-            />
-          </label>
-        </div>
-        <button type="submit" style={{ marginTop: 8 }}>create</button>
-      </form>
+      {/* 5.5–5.6: piilotettava luontilomake */}
+      <Togglable buttonLabel="create new blog" ref={formRef}>
+        <BlogForm onCreate={createBlog} />
+      </Togglable>
 
-      {blogs.map((b) => (
-        <div
+      {blogs.map(b => (
+        <Blog
           key={b.id}
-          style={{
-            padding: 8,
-            border: '1px solid #ddd',
-            borderRadius: 6,
-            marginBottom: 8
-          }}
-        >
-          <strong>{b.title}</strong> — {b.author}
-        </div>
+          blog={b}
+          currentUser={user}
+          onLike={likeBlog}
+          onDelete={deleteBlog}
+        />
       ))}
     </div>
   )

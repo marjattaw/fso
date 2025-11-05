@@ -1,0 +1,12 @@
+{
+  "env": { "node": true, "es2022": true },
+  "extends": ["eslint:recommended"],
+  "parserOptions": { "ecmaVersion": "latest", "sourceType": "script" },
+  "rules": {
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+    "no-undef": "error",
+    "no-console": "off",
+    "semi": ["error", "never"],
+    "quotes": ["error", "single"]
+  }
+}

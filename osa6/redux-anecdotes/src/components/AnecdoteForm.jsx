@@ -1,15 +1,20 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createAnecdote } from '../services/anecdotes'
+import { useNotification } from '../NotificationContext'
 
 const AnecdoteForm = () => {
   const queryClient = useQueryClient()
+  const { notify } = useNotification()
 
   const createMutation = useMutation({
     mutationFn: createAnecdote,
     onSuccess: (created) => {
-      // lisää suoraan välimuistiin
       queryClient.setQueryData(['anecdotes'], (old = []) => [...old, created])
-      // vaihtoehto: queryClient.invalidateQueries({ queryKey: ['anecdotes'] })
+      notify(`anecdote '${created.content}' created`, 5)
+    },
+    // 6.24: virhe jos sisältö < 5 merkkiä
+    onError: () => {
+      notify('too short anecdote, must have length 5 or more', 5)
     },
   })
 

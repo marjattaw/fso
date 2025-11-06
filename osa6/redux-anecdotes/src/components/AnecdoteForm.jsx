@@ -1,15 +1,15 @@
 import { useDispatch } from 'react-redux'
-import { createAnecdote } from '../reducers/anecdoteSlice'
+import { createAnecdoteAsync } from '../reducers/anecdoteSlice'
 import { setNotification } from '../reducers/notificationSlice'
 
 const AnecdoteForm = () => {
   const dispatch = useDispatch()
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     const content = e.target.anecdote.value.trim()
     if (!content) return
-    dispatch(createAnecdote(content))
+    await dispatch(createAnecdoteAsync(content))          // 6.15: POST backend
     dispatch(setNotification(`You created '${content}'`, 5))
     e.target.reset()
   }

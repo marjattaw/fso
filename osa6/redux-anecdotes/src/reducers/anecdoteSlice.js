@@ -1,35 +1,49 @@
 import { createSlice } from '@reduxjs/toolkit'
-
-const getId = () => (100000 * Math.random()).toFixed(0)
-const initialAnecdotes = [
-  'If it hurts, do it more often',
-  'Adding manpower to a late software project makes it later!',
-  'The first 90 percent of the code accounts for the first 90 percent of the development time...'
-  + 'The remaining 10 percent of the code accounts for the other 90 percent of the development time.',
-  'Any fool can write code that a computer can understand. Good programmers write code that humans can understand.',
-  'Premature optimization is the root of all evil.',
-  'Debugging is twice as hard as writing the code in the first place.'
-  + ' Therefore, if you write the code as cleverly as possible, you are, by definition, not smart enough to debug it.'
-].map(a => ({ id: getId(), content: a, votes: 0 }))
+import * as api from '../services/anecdotes'
 
 const byVotesDesc = (a, b) => b.votes - a.votes
 
 const anecdoteSlice = createSlice({
   name: 'anecdotes',
-  initialState: initialAnecdotes.sort(byVotesDesc),
+  initialState: [],                  // 6.14: ladataan backendistä
   reducers: {
+    setAnecdotes(_state, action) {
+      return [...action.payload].sort(byVotesDesc)
+    },
+    appendAnecdote(state, action) {
+      return [...state, action.payload].sort(byVotesDesc)
+    },
     voteAnecdote(state, action) {
       const id = action.payload
       return state
         .map(a => a.id !== id ? a : { ...a, votes: a.votes + 1 })
         .sort(byVotesDesc)
     },
-    createAnecdote(state, action) {
-      const content = action.payload
-      return [...state, { id: getId(), content, votes: 0 }].sort(byVotesDesc)
+    createAnecdoteLocal(state, action) {
+      // jää varalle, jos haluat luoda ilman backendia
+      return [...state, action.payload].sort(byVotesDesc)
     },
   },
 })
 
-export const { voteAnecdote, createAnecdote } = anecdoteSlice.actions
+export const { setAnecdotes, appendAnecdote, voteAnecdote, createAnecdoteLocal } =
+  anecdoteSlice.actions
 export default anecdoteSlice.reducer
+
+// ---------- THUNKIT (Fetch API) ----------
+
+// 6.14: hae kaikki käynnistyksessä
+export const initializeAnecdotes = () => {
+  return async (dispatch) => {
+    const data = await api.getAll()
+    dispatch(setAnecdotes(data))
+  }
+}
+
+// 6.15: luo uusi backendissä
+export const createAnecdoteAsync = (content) => {
+  return async (dispatch) => {
+    const created = await api.createNew(content)
+    dispatch(appendAnecdote(created))
+  }
+}

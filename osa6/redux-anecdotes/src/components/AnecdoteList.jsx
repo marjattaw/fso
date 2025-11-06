@@ -3,11 +3,16 @@ import { voteAnecdote } from '../reducers/anecdoteReducer'
 
 const AnecdoteList = () => {
   const dispatch = useDispatch()
-  const anecdotes = useSelector(state => state) // reducer palauttaa pelkän listan
+  const { anecdotes, filter } = useSelector((state) => state)
+
+  const visible = anecdotes.filter(a =>
+    a.content.toLowerCase().includes(filter.toLowerCase())
+  )
+  // Järjestys pysyy reducerissa, mutta suodatuksen jälkeen on ok näyttää sellaisenaan
 
   return (
     <div>
-      {anecdotes.map(anec => (
+      {visible.map(anec => (
         <div key={anec.id} style={{ marginBottom: 12 }}>
           <div>{anec.content}</div>
           <div>

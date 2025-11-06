@@ -1,11 +1,15 @@
-import { createStore, combineReducers } from 'redux'
-import anecdoteReducer from './reducers/anecdoteReducer'
-import filterReducer from './reducers/filterReducer'
+import { configureStore } from '@reduxjs/toolkit'
+import anecdoteReducer from './reducers/anecdoteSlice'
+import filterReducer from './reducers/filterSlice'
+import notificationReducer from './reducers/notificationSlice'
 
-const rootReducer = combineReducers({
-  anecdotes: anecdoteReducer,
-  filter: filterReducer,
+const store = configureStore({
+  reducer: {
+    anecdotes: anecdoteReducer,
+    filter: filterReducer,
+    notification: notificationReducer,
+  },
+  // DevTools on päällä oletuksena devissä
 })
 
-const store = createStore(rootReducer)
 export default store

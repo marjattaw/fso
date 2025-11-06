@@ -1,5 +1,6 @@
 import { useDispatch, useSelector } from 'react-redux'
-import { voteAnecdote } from '../reducers/anecdoteReducer'
+import { voteAnecdote } from '../reducers/anecdoteSlice'
+import { setNotification } from '../reducers/notificationSlice'
 
 const AnecdoteList = () => {
   const dispatch = useDispatch()
@@ -8,7 +9,11 @@ const AnecdoteList = () => {
   const visible = anecdotes.filter(a =>
     a.content.toLowerCase().includes(filter.toLowerCase())
   )
-  // Järjestys pysyy reducerissa, mutta suodatuksen jälkeen on ok näyttää sellaisenaan
+
+  const handleVote = (anec) => {
+    dispatch(voteAnecdote(anec.id))
+    dispatch(setNotification(`You voted '${anec.content}'`, 5))
+  }
 
   return (
     <div>
@@ -17,7 +22,7 @@ const AnecdoteList = () => {
           <div>{anec.content}</div>
           <div>
             has {anec.votes} votes{' '}
-            <button onClick={() => dispatch(voteAnecdote(anec.id))}>vote</button>
+            <button onClick={() => handleVote(anec)}>vote</button>
           </div>
         </div>
       ))}

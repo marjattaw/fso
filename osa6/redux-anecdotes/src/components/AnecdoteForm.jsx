@@ -9,8 +9,8 @@ const AnecdoteForm = () => {
     e.preventDefault()
     const content = e.target.anecdote.value.trim()
     if (!content) return
-    await dispatch(createAnecdoteAsync(content))          // 6.15: POST backend
-    dispatch(setNotification(`You created '${content}'`, 5))
+    await dispatch(createAnecdoteAsync(content))
+    dispatch(setNotification(`new anecdote '${content}'`, 5))
     e.target.reset()
   }
 
@@ -23,5 +23,4 @@ const AnecdoteForm = () => {
     </form>
   )
 }
-
 export default AnecdoteForm

@@ -5,7 +5,7 @@ const byVotesDesc = (a, b) => b.votes - a.votes
 
 const anecdoteSlice = createSlice({
   name: 'anecdotes',
-  initialState: [],                  // 6.14: ladataan backendistä
+  initialState: [], // 6.16: täytetään backendistä
   reducers: {
     setAnecdotes(_state, action) {
       return [...action.payload].sort(byVotesDesc)
@@ -13,26 +13,23 @@ const anecdoteSlice = createSlice({
     appendAnecdote(state, action) {
       return [...state, action.payload].sort(byVotesDesc)
     },
-    voteAnecdote(state, action) {
-      const id = action.payload
+    replaceAnecdote(state, action) {
+      const updated = action.payload
       return state
-        .map(a => a.id !== id ? a : { ...a, votes: a.votes + 1 })
+        .map(a => a.id !== updated.id ? a : updated)
         .sort(byVotesDesc)
-    },
-    createAnecdoteLocal(state, action) {
-      // jää varalle, jos haluat luoda ilman backendia
-      return [...state, action.payload].sort(byVotesDesc)
     },
   },
 })
 
-export const { setAnecdotes, appendAnecdote, voteAnecdote, createAnecdoteLocal } =
+export const { setAnecdotes, appendAnecdote, replaceAnecdote } =
   anecdoteSlice.actions
+
 export default anecdoteSlice.reducer
 
-// ---------- THUNKIT (Fetch API) ----------
+// ---------- THUNKIT ----------
 
-// 6.14: hae kaikki käynnistyksessä
+// 6.16: alustus backendistä
 export const initializeAnecdotes = () => {
   return async (dispatch) => {
     const data = await api.getAll()
@@ -40,10 +37,18 @@ export const initializeAnecdotes = () => {
   }
 }
 
-// 6.15: luo uusi backendissä
+// 6.17: luonti backendissä
 export const createAnecdoteAsync = (content) => {
   return async (dispatch) => {
     const created = await api.createNew(content)
     dispatch(appendAnecdote(created))
+  }
+}
+
+// 6.18: äänestys backendissä
+export const voteAnecdoteAsync = (anec) => {
+  return async (dispatch) => {
+    const updated = await api.updateVotes(anec)
+    dispatch(replaceAnecdote(updated))
   }
 }

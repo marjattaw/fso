@@ -8,13 +8,10 @@ import AnecdoteList from './components/AnecdoteList'
 
 const App = () => {
   const dispatch = useDispatch()
-
-  useEffect(() => {
-    dispatch(initializeAnecdotes())
-  }, [dispatch])
+  useEffect(() => { dispatch(initializeAnecdotes()) }, [dispatch])
 
   return (
-    <div style={{ padding: 16, maxWidth: 800 }}>
+    <div>
       <h2>Anecdotes</h2>
       <Notification />
       <Filter />
@@ -23,5 +20,4 @@ const App = () => {
     </div>
   )
 }
-
 export default App

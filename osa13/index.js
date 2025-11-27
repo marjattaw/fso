@@ -1,10 +1,19 @@
 require('dotenv').config()
 
 const express = require('express')
-const { sequelize, Blog, User, ReadingList } = require('./util/db')
+const { sequelize } = require('./util/db')
+const Blog = require('./models/blog')
+const User = require('./models/user')
+const ReadingList = require('./models/reading_list')
 
 const app = express()
 app.use(express.json())
+
+// Relaatiot
+User.hasMany(Blog)
+Blog.belongsTo(User)
+User.belongsToMany(Blog, { through: ReadingList })
+Blog.belongsToMany(User, { through: ReadingList })
 
 // Hae kaikki blogit + käyttäjä
 app.get('/', async (req, res) => {
@@ -22,7 +31,7 @@ app.get('/', async (req, res) => {
   }
 })
 
-// Hae kaikki käyttäjät ja heidän blogit
+// Hae kaikki käyttäjät ja heidän lukulistansa
 app.get('/api/users', async (req, res) => {
   try {
     const users = await User.findAll({
@@ -30,7 +39,7 @@ app.get('/api/users', async (req, res) => {
         model: Blog,
         attributes: ['id', 'title', 'url'],
         through: {
-          attributes: ['read']
+          attributes: ['id', 'read']
         }
       }
     })
@@ -41,7 +50,7 @@ app.get('/api/users', async (req, res) => {
   }
 })
 
-// Lisää käyttäjä
+// Luo uusi käyttäjä
 app.post('/api/users', async (req, res) => {
   try {
     const user = await User.create(req.body)
@@ -51,7 +60,7 @@ app.post('/api/users', async (req, res) => {
   }
 })
 
-// Lisää blogi käyttäjälle
+// Luo blogi käyttäjälle
 app.post('/api/blogs', async (req, res) => {
   try {
     const body = req.body
@@ -62,7 +71,10 @@ app.post('/api/blogs', async (req, res) => {
     }
 
     const blog = await Blog.create({
-      ...body,
+      title: body.title,
+      author: body.author,
+      url: body.url,
+      likes: body.likes ?? 0,
       userId: user.id
     })
 
@@ -73,21 +85,22 @@ app.post('/api/blogs', async (req, res) => {
   }
 })
 
-// Lisää blogi käyttäjän reading-listille
+// Lisää blogi käyttäjän reading-listalle
 app.post('/api/readinglists', async (req, res) => {
   try {
-    const body = req.body
+    const { userId, blogId } = req.body
 
-    const user = await User.findByPk(body.userId)
-    const blog = await Blog.findByPk(body.blogId)
+    const user = await User.findByPk(userId)
+    const blog = await Blog.findByPk(blogId)
 
     if (!user || !blog) {
       return res.status(404).json({ error: 'user or blog not found' })
     }
 
     const reading = await ReadingList.create({
-      userId: body.userId,
-      blogId: body.blogId
+      userId,
+      blogId,
+      read: false
     })
 
     res.status(201).json(reading)
@@ -97,14 +110,14 @@ app.post('/api/readinglists', async (req, res) => {
   }
 })
 
-// Hae yhden käyttäjän reading list
+// Hae yhden käyttäjän lukulista
 app.get('/api/users/:id/readinglist', async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id, {
       include: {
         model: Blog,
         through: {
-          attributes: ['read']
+          attributes: ['id', 'read']
         }
       }
     })
@@ -117,6 +130,26 @@ app.get('/api/users/:id/readinglist', async (req, res) => {
   } catch (error) {
     console.error(error)
     res.status(500).json({ error: 'something went wrong' })
+  }
+})
+
+// Päivitä readinglist-rivin read-arvo
+app.put('/api/readinglists/:id', async (req, res) => {
+  try {
+    const { read } = req.body
+
+    const item = await ReadingList.findByPk(req.params.id)
+    if (!item) {
+      return res.status(404).json({ error: 'reading list item not found' })
+    }
+
+    item.read = read
+    await item.save()
+
+    res.json(item)
+  } catch (error) {
+    console.error(error)
+    res.status(400).json({ error: 'could not update reading list item' })
   }
 })
 

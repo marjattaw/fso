@@ -1,25 +1,33 @@
-require('dotenv').config()
-const { Sequelize } = require('sequelize')
+require('dotenv').config()            // 👈 ENSIMMÄISENÄ
 
-const sequelize = new Sequelize(
-  process.env.PGDATABASE,   // tietokannan nimi
-  process.env.PGUSER,       // käyttäjä
-  process.env.PGPASSWORD,   // salasana
-  {
-    host: process.env.PGHOST,
-    port: process.env.PGPORT,
-    dialect: 'postgres'
+const express = require('express')
+const { sequelize } = require('./util/db')
+const Blog = require('./models/blog')
+
+const app = express()
+app.use(express.json())
+
+app.get('/', async (req, res) => {
+  try {
+    const blogs = await Blog.findAll()
+    res.json(blogs)
+  } catch (error) {
+    console.error('Virhe Blog.findAllissa:', error)
+    res.status(500).json({ error: 'something went wrong' })
   }
-)
+})
 
-const main = async () => {
+const start = async () => {
   try {
     await sequelize.authenticate()
-    console.log('Connection has been established successfully.')
-    await sequelize.close()
+    console.log('Database connected')
+
+    app.listen(3001, () => {
+      console.log('Server running on port 3001')
+    })
   } catch (error) {
-    console.error('Unable to connect to the database:', error)
+    console.error('Database connection failed:', error)
   }
 }
 
-main()
+start()

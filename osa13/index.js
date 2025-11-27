@@ -1,4 +1,4 @@
-require('dotenv').config()  // 👈 tämä ensin!
+require('dotenv').config()
 
 const express = require('express')
 const { sequelize } = require('./util/db')
@@ -26,6 +26,56 @@ app.post('/api/blogs', async (req, res) => {
   } catch (error) {
     console.error('Virhe blogia luodessa:', error)
     res.status(400).json({ error: 'could not create blog' })
+  }
+})
+
+// Hae yksittäinen blogi id:n perusteella
+app.get('/api/blogs/:id', async (req, res) => {
+  try {
+    const blog = await Blog.findByPk(req.params.id)
+
+    if (!blog) {
+      return res.status(404).json({ error: 'blog not found' })
+    }
+
+    res.json(blog)
+  } catch (error) {
+    console.error('Virhe blogia haettaessa:', error)
+    res.status(500).json({ error: 'something went wrong' })
+  }
+})
+
+// Poista blogi id:n perusteella
+app.delete('/api/blogs/:id', async (req, res) => {
+  try {
+    const blog = await Blog.findByPk(req.params.id)
+
+    if (!blog) {
+      return res.status(404).json({ error: 'blog not found' })
+    }
+
+    await blog.destroy()
+    res.status(204).end()
+  } catch (error) {
+    console.error('Virhe blogia poistaessa:', error)
+    res.status(500).json({ error: 'something went wrong' })
+  }
+})
+
+// Päivitä blogi id:n perusteella
+app.put('/api/blogs/:id', async (req, res) => {
+  try {
+    const blog = await Blog.findByPk(req.params.id)
+
+    if (!blog) {
+      return res.status(404).json({ error: 'blog not found' })
+    }
+
+    const updatedBlog = await blog.update(req.body)
+    res.json(updatedBlog)
+  } catch (error) {
+    console.error('Virhe blogia päivittäessä:', error)
+    res.status(400).json({ error: 'could not update blog' })
   }
 })
 

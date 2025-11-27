@@ -8,6 +8,7 @@ const { sequelize } = require('./util/db')
 const Blog = require('./models/blog')
 const User = require('./models/user')
 const ReadingList = require('./models/reading_list')
+const Session = require('./models/session')
 
 const app = express()
 app.use(express.json())
@@ -15,23 +16,50 @@ app.use(express.json())
 // Relaatiot
 User.hasMany(Blog)
 Blog.belongsTo(User)
-User.belongsToMany(Blog, { through: ReadingList })
+// lukulista alias "readings"
+User.belongsToMany(Blog, { through: ReadingList, as: 'readings' })
 Blog.belongsToMany(User, { through: ReadingList })
 
-// TOKEN-MIDDLEWARE (13.10 pohja)
-const tokenExtractor = (req, res, next) => {
+/**
+ * TOKEN-MIDDLEWARE (13.10 + 13.24)
+ * - tarkistaa JWT:n
+ * - tarkistaa onko token sessions-taulussa
+ * - tarkistaa ettei käyttäjä ole disabled
+ */
+
+const tokenExtractor = async (req, res, next) => {
   const authorization = req.get('authorization')
-  if (authorization && authorization.toLowerCase().startsWith('bearer ')) {
-    try {
-      req.decodedToken = jwt.verify(authorization.substring(7), process.env.SECRET)
-    } catch (error) {
-      console.log(error)
-      return res.status(401).json({ error: 'token invalid' })
-    }
-  } else {
+
+  if (!authorization || !authorization.toLowerCase().startsWith('bearer ')) {
     req.decodedToken = null
+    req.token = null
+    return next()
   }
-  next()
+
+  const token = authorization.substring(7)
+
+  try {
+    const decodedToken = jwt.verify(token, process.env.SECRET)
+
+    // onko token sessiotaulussa?
+    const session = await Session.findOne({ where: { token } })
+    if (!session) {
+      return res.status(401).json({ error: 'session expired' })
+    }
+
+    // onko käyttäjä olemassa ja ei-disabled?
+    const user = await User.findByPk(decodedToken.id)
+    if (!user || user.disabled) {
+      return res.status(401).json({ error: 'user disabled or not found' })
+    }
+
+    req.decodedToken = decodedToken
+    req.token = token
+    next()
+  } catch (error) {
+    console.log(error)
+    return res.status(401).json({ error: 'token invalid' })
+  }
 }
 
 app.use(tokenExtractor)
@@ -77,7 +105,7 @@ app.get('/api/blogs', async (req, res, next) => {
         attributes: ['id', 'username', 'name']
       },
       where,
-      order: [['likes', 'DESC']] // 13.15
+      order: [['likes', 'DESC']]
     })
 
     res.json(blogs)
@@ -86,7 +114,7 @@ app.get('/api/blogs', async (req, res, next) => {
   }
 })
 
-// POST /api/blogs – blogi kirjautuneelle käyttäjälle (13.10)
+// POST /api/blogs – blogi kirjautuneelle käyttäjälle (13.10 + 13.24 disabled check)
 app.post('/api/blogs', async (req, res, next) => {
   try {
     if (!req.decodedToken) {
@@ -94,8 +122,8 @@ app.post('/api/blogs', async (req, res, next) => {
     }
 
     const user = await User.findByPk(req.decodedToken.id)
-    if (!user) {
-      return res.status(401).json({ error: 'user not found' })
+    if (!user || user.disabled) {
+      return res.status(401).json({ error: 'user disabled or not found' })
     }
 
     const blog = await Blog.create({
@@ -157,7 +185,6 @@ app.delete('/api/blogs/:id', async (req, res, next) => {
 
 /**
  * /api/authors – 13.16
- * author-kohtainen blogien määrä ja likejen summa
  */
 app.get('/api/authors', async (req, res, next) => {
   try {
@@ -178,7 +205,7 @@ app.get('/api/authors', async (req, res, next) => {
 })
 
 /**
- * KÄYTTÄJÄT – 13.8, 13.9, 13.12
+ * KÄYTTÄJÄT – 13.8, 13.9, 13.12, 13.23
  */
 
 // POST /api/users – uuden käyttäjän lisäys (13.8)
@@ -206,7 +233,7 @@ app.get('/api/users', async (req, res, next) => {
   }
 })
 
-// PUT /api/users/:username – nimen muutos käyttäjätunnuksen perusteella (13.8)
+// PUT /api/users/:username – nimen muutos (13.8)
 app.put('/api/users/:username', async (req, res, next) => {
   try {
     const user = await User.findOne({ where: { username: req.params.username } })
@@ -222,10 +249,46 @@ app.put('/api/users/:username', async (req, res, next) => {
   }
 })
 
+// GET /api/users/:id – lukulista + ?read=true/false (13.23)
+app.get('/api/users/:id', async (req, res, next) => {
+  try {
+    const readFilter = {}
+    if (req.query.read === 'true') {
+      readFilter.read = true
+    } else if (req.query.read === 'false') {
+      readFilter.read = false
+    }
+
+    const user = await User.findByPk(req.params.id, {
+      attributes: ['id', 'name', 'username'],
+      include: [
+        {
+          model: Blog,
+          as: 'readings',
+          attributes: ['id', 'url', 'title', 'author', 'likes', 'year'],
+          through: {
+            attributes: ['id', 'read'],
+            where: Object.keys(readFilter).length ? readFilter : undefined
+          }
+        }
+      ]
+    })
+
+    if (!user) {
+      return res.status(404).json({ error: 'user not found' })
+    }
+
+    res.json(user)
+  } catch (error) {
+    next(error)
+  }
+})
+
 /**
- * LOGIN – 13.10
- * POST /api/login – palauttaa tokenin
+ * LOGIN & LOGOUT – 13.10 + 13.24
  */
+
+// Login – luo tokenin ja session
 app.post('/api/login', async (req, res, next) => {
   try {
     const { username, password } = req.body
@@ -237,12 +300,22 @@ app.post('/api/login', async (req, res, next) => {
       return res.status(401).json({ error: 'invalid username or password' })
     }
 
+    if (user.disabled) {
+      return res.status(401).json({ error: 'user disabled' })
+    }
+
     const userForToken = {
       username: user.username,
       id: user.id
     }
 
     const token = jwt.sign(userForToken, process.env.SECRET)
+
+    // tallennetaan sessio (13.24)
+    await Session.create({
+      userId: user.id,
+      token
+    })
 
     res.status(200).send({
       token,
@@ -254,8 +327,22 @@ app.post('/api/login', async (req, res, next) => {
   }
 })
 
+// Logout – poistaa sessionin (13.24)
+app.delete('/api/logout', async (req, res, next) => {
+  try {
+    if (!req.decodedToken || !req.token) {
+      return res.status(401).json({ error: 'token missing or invalid' })
+    }
+
+    await Session.destroy({ where: { token: req.token } })
+    res.status(204).end()
+  } catch (error) {
+    next(error)
+  }
+})
+
 /**
- * READING LIST – aiemmat tehtävät + read-päivitys
+ * READING LIST – 13.19–13.22
  */
 
 // Lisää blogi reading listille
@@ -285,7 +372,6 @@ app.post('/api/readinglists', async (req, res, next) => {
 // Päivitä readinglist-rivin read-arvo – 13.22
 app.put('/api/readinglists/:id', async (req, res, next) => {
   try {
-    // vaaditaan token
     if (!req.decodedToken) {
       return res.status(401).json({ error: 'token missing or invalid' })
     }
@@ -297,7 +383,6 @@ app.put('/api/readinglists/:id', async (req, res, next) => {
       return res.status(404).json({ error: 'reading list item not found' })
     }
 
-    // sallitaan päivitys vain riville, jonka userId vastaa tokenin id:tä
     if (item.userId !== req.decodedToken.id) {
       return res.status(403).json({ error: 'not allowed to modify this reading list item' })
     }
@@ -306,36 +391,6 @@ app.put('/api/readinglists/:id', async (req, res, next) => {
     await item.save()
 
     res.json(item)
-  } catch (error) {
-    next(error)
-  }
-})
-
-// Käyttäjän lukulista + ?read=true/false filtteri
-app.get('/api/users/:id/readinglist', async (req, res, next) => {
-  try {
-    const readFilter = {}
-    if (req.query.read === 'true') {
-      readFilter.read = true
-    } else if (req.query.read === 'false') {
-      readFilter.read = false
-    }
-
-    const user = await User.findByPk(req.params.id, {
-      include: {
-        model: Blog,
-        through: {
-          attributes: ['id', 'read'],
-          where: Object.keys(readFilter).length ? readFilter : undefined
-        }
-      }
-    })
-
-    if (!user) {
-      return res.status(404).json({ error: 'user not found' })
-    }
-
-    res.json(user)
   } catch (error) {
     next(error)
   }

@@ -282,14 +282,24 @@ app.post('/api/readinglists', async (req, res, next) => {
   }
 })
 
-// Päivitä readinglist-rivin read-arvo
+// Päivitä readinglist-rivin read-arvo – 13.22
 app.put('/api/readinglists/:id', async (req, res, next) => {
   try {
+    // vaaditaan token
+    if (!req.decodedToken) {
+      return res.status(401).json({ error: 'token missing or invalid' })
+    }
+
     const { read } = req.body
     const item = await ReadingList.findByPk(req.params.id)
 
     if (!item) {
       return res.status(404).json({ error: 'reading list item not found' })
+    }
+
+    // sallitaan päivitys vain riville, jonka userId vastaa tokenin id:tä
+    if (item.userId !== req.decodedToken.id) {
+      return res.status(403).json({ error: 'not allowed to modify this reading list item' })
     }
 
     item.read = read

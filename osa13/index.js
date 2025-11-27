@@ -5,6 +5,7 @@ const { sequelize } = require('./util/db')
 const Blog = require('./models/blog')
 const User = require('./models/user')
 const ReadingList = require('./models/reading_list')
+const { Op } = require('sequelize')
 
 const app = express()
 app.use(express.json())
@@ -15,7 +16,7 @@ Blog.belongsTo(User)
 User.belongsToMany(Blog, { through: ReadingList })
 Blog.belongsToMany(User, { through: ReadingList })
 
-// Hae kaikki blogit + käyttäjä
+// Kaikki blogit + lisääjä (vanha reitti, ok myös)
 app.get('/', async (req, res) => {
   try {
     const blogs = await Blog.findAll({
@@ -31,7 +32,45 @@ app.get('/', async (req, res) => {
   }
 })
 
-// Hae kaikki käyttäjät ja heidän lukulistansa
+// ✅ 13.12–13.14: Kaikki blogit + hakufiltteri ?search=
+// - jos search puuttuu -> kaikki blogit
+// - jos search on annettu -> haetaan title TAI author sisältää hakusanan (case-insensitive)
+app.get('/api/blogs', async (req, res) => {
+  try {
+    const where = {}
+
+    if (req.query.search) {
+      const search = req.query.search.toLowerCase()
+      where[Op.or] = [
+        {
+          title: {
+            [Op.iLike]: `%${search}%`
+          }
+        },
+        {
+          author: {
+            [Op.iLike]: `%${search}%`
+          }
+        }
+      ]
+    }
+
+    const blogs = await Blog.findAll({
+      include: {
+        model: User,
+        attributes: ['id', 'username', 'name']
+      },
+      where
+    })
+
+    res.json(blogs)
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: 'something went wrong' })
+  }
+})
+
+// Hae kaikki käyttäjät ja heidän lukulistansa / bloginsa
 app.get('/api/users', async (req, res) => {
   try {
     const users = await User.findAll({
@@ -110,7 +149,7 @@ app.post('/api/readinglists', async (req, res) => {
   }
 })
 
-// Hae yhden käyttäjän lukulista (+ suodatus ?read=true/false)
+// Hae yhden käyttäjän lukulista + suodatus ?read=true/false
 app.get('/api/users/:id/readinglist', async (req, res) => {
   try {
     const readFilter = {}

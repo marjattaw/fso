@@ -1,6 +1,8 @@
 const { Sequelize } = require('sequelize')
+
 const Blog = require('../models/blog')
 const User = require('../models/user')
+const ReadingList = require('../models/reading_list')
 
 const sequelize = new Sequelize(
   process.env.PGDATABASE,
@@ -13,12 +15,17 @@ const sequelize = new Sequelize(
   }
 )
 
-// Relaatiot:
+// Suorat relaatiot
 User.hasMany(Blog)
 Blog.belongsTo(User)
+
+// Many-to-many: käyttäjät <-> blogit readinglistin kautta
+User.belongsToMany(Blog, { through: ReadingList })
+Blog.belongsToMany(User, { through: ReadingList })
 
 module.exports = {
   sequelize,
   Blog,
-  User
+  User,
+  ReadingList
 }

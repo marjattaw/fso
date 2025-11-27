@@ -1,12 +1,12 @@
 require('dotenv').config()
 
 const express = require('express')
-const { sequelize, Blog, User } = require('./util/db')
+const { sequelize, Blog, User, ReadingList } = require('./util/db')
 
 const app = express()
 app.use(express.json())
 
-// Hae kaikki blogit + käyttäjätiedot
+// Hae kaikki blogit + käyttäjä
 app.get('/', async (req, res) => {
   try {
     const blogs = await Blog.findAll({
@@ -15,26 +15,33 @@ app.get('/', async (req, res) => {
         attributes: ['id', 'username', 'name']
       }
     })
-
     res.json(blogs)
   } catch (error) {
-    console.error('Virhe Blog.findAllissa:', error)
+    console.error(error)
     res.status(500).json({ error: 'something went wrong' })
   }
 })
 
-// Hae kaikki käyttäjät
+// Hae kaikki käyttäjät ja heidän blogit
 app.get('/api/users', async (req, res) => {
-  const users = await User.findAll({
-    include: {
-      model: Blog,
-      attributes: ['id', 'title', 'url']
-    }
-  })
-  res.json(users)
+  try {
+    const users = await User.findAll({
+      include: {
+        model: Blog,
+        attributes: ['id', 'title', 'url'],
+        through: {
+          attributes: ['read']
+        }
+      }
+    })
+    res.json(users)
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: 'something went wrong' })
+  }
 })
 
-// Luo uusi käyttäjä
+// Lisää käyttäjä
 app.post('/api/users', async (req, res) => {
   try {
     const user = await User.create(req.body)
@@ -44,7 +51,7 @@ app.post('/api/users', async (req, res) => {
   }
 })
 
-// Luo blogi käyttäjälle
+// Lisää blogi käyttäjälle
 app.post('/api/blogs', async (req, res) => {
   try {
     const body = req.body
@@ -61,8 +68,55 @@ app.post('/api/blogs', async (req, res) => {
 
     res.status(201).json(blog)
   } catch (error) {
-    console.error('Virhe blogia luodessa:', error)
+    console.error(error)
     res.status(400).json({ error: 'could not create blog' })
+  }
+})
+
+// Lisää blogi käyttäjän reading-listille
+app.post('/api/readinglists', async (req, res) => {
+  try {
+    const body = req.body
+
+    const user = await User.findByPk(body.userId)
+    const blog = await Blog.findByPk(body.blogId)
+
+    if (!user || !blog) {
+      return res.status(404).json({ error: 'user or blog not found' })
+    }
+
+    const reading = await ReadingList.create({
+      userId: body.userId,
+      blogId: body.blogId
+    })
+
+    res.status(201).json(reading)
+  } catch (error) {
+    console.error(error)
+    res.status(400).json({ error: 'could not add to reading list' })
+  }
+})
+
+// Hae yhden käyttäjän reading list
+app.get('/api/users/:id/readinglist', async (req, res) => {
+  try {
+    const user = await User.findByPk(req.params.id, {
+      include: {
+        model: Blog,
+        through: {
+          attributes: ['read']
+        }
+      }
+    })
+
+    if (!user) {
+      return res.status(404).json({ error: 'user not found' })
+    }
+
+    res.json(user)
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: 'something went wrong' })
   }
 })
 

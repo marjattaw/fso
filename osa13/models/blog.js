@@ -18,7 +18,7 @@ const Blog = sequelize.define('blog', {
     defaultValue: 0
   }
 }, {
-  timestamps: false          // 👈 ei createdAt/updatedAt-kenttiä
+  timestamps: false
 })
 
 module.exports = Blog

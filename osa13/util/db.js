@@ -1,4 +1,6 @@
 const { Sequelize } = require('sequelize')
+const Blog = require('../models/blog')
+const User = require('../models/user')
 
 const sequelize = new Sequelize(
   process.env.PGDATABASE,
@@ -11,6 +13,12 @@ const sequelize = new Sequelize(
   }
 )
 
+// Relaatiot:
+User.hasMany(Blog)
+Blog.belongsTo(User)
+
 module.exports = {
-  sequelize
+  sequelize,
+  Blog,
+  User
 }

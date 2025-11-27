@@ -110,14 +110,22 @@ app.post('/api/readinglists', async (req, res) => {
   }
 })
 
-// Hae yhden käyttäjän lukulista
+// Hae yhden käyttäjän lukulista (+ suodatus ?read=true/false)
 app.get('/api/users/:id/readinglist', async (req, res) => {
   try {
+    const readFilter = {}
+    if (req.query.read === 'true') {
+      readFilter.read = true
+    } else if (req.query.read === 'false') {
+      readFilter.read = false
+    }
+
     const user = await User.findByPk(req.params.id, {
       include: {
         model: Blog,
         through: {
-          attributes: ['id', 'read']
+          attributes: ['id', 'read'],
+          where: Object.keys(readFilter).length ? readFilter : undefined
         }
       }
     })
